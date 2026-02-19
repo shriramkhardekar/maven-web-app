@@ -15,12 +15,12 @@ pipeline {
              sh 'mvn clean package'
             }
         }
-        stage('code quality') {
-			steps{
-		 withSonarQubeEnv('Sonar-9.9.8')
-	     sh "mvn sonar:sonar"
-    }
-}
+       stage('SonarQube Analysis') {
+            steps {
+                withSonarQubeEnv('MySonarServer') {   // <--- notice the closure {}
+                    sh 'mvn sonar:sonar'
+                }
+            }
         stage('build docker image'){
             steps{
                  script {
