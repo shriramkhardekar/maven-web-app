@@ -15,6 +15,13 @@ pipeline {
              sh 'mvn clean package'
             }
         }
+        stage('SonarQube analysis') {
+	withSonarQubeEnv('Sonar-9.9.8') {
+	def mavenHome = tool name: "maven", type: "maven"
+	def mavenCMD = "${mavenHome}/bin/mvn"
+	sh "${mavenCMD} sonar:sonar"
+    }
+}
         stage('build docker image'){
             steps{
                  script {
