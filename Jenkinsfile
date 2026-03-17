@@ -7,21 +7,24 @@ pipeline {
     }
 
     environment {
-        DOCKER_HUB_USER = 'shriramk02'          // Docker Hub username
-        DOCKER_HUB_CRED = '9449d280-ceba-4bb6-a973-0d8a97cf0d7f'    // Jenkins credential ID
-        IMAGE_NAME     = 'myapp'                       // Docker image name
+        DOCKER_HUB_USER = 'shriramk02'                          // Docker Hub username
+        DOCKER_HUB_CRED = '9449d280-ceba-4bb6-a973-0d8a97cf0d7f' // Jenkins credential ID
+        IMAGE_NAME     = 'myapp'                                 // Docker image name
+        K8S_DEPLOYMENT = 'mavenwebappdeployment'                // Kubernetes deployment name
+        K8S_CONTAINER  = 'mavenwebappcontainer'                 // Container name in deployment
+        K8S_NAMESPACE  = 'default'                              // Namespace (change if needed)
     }
 
     stages {
 
-        stage('git clone') {
+        stage('Git Clone') {
             steps {
                 git branch: 'main',
                     url: 'https://github.com/shriramkhardekar/maven-web-app.git'
             }
         }
 
-        stage('maven build') {
+        stage('Maven Build') {
             steps {
                 sh 'mvn clean package'
             }
@@ -38,7 +41,7 @@ pipeline {
         stage('Build Docker Image') {
             steps {
                 script {
-                    // Build Docker image and tag with Jenkins build number
+                    // Build Docker image tagged with Jenkins build number
                     sh "docker build -t ${DOCKER_HUB_USER}/${IMAGE_NAME}:${BUILD_NUMBER} ."
                 }
             }
@@ -47,32 +50,34 @@ pipeline {
         stage('Push Docker Image') {
             steps {
                 script {
-                    // Login to Docker Hub using Jenkins credentials and push image
-                    withCredentials([usernamePassword(credentialsId: "${DOCKER_HUB_CRED}", 
-                                                     usernameVariable: 'DOCKER_USER', 
-                                                     passwordVariable: 'DOCKER_PASS')]) {
+                    withCredentials([usernamePassword(
+                        credentialsId: "${DOCKER_HUB_CRED}", 
+                        usernameVariable: 'DOCKER_USER', 
+                        passwordVariable: 'DOCKER_PASS')]) {
                         sh """
                             echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin
                             docker push ${DOCKER_HUB_USER}/${IMAGE_NAME}:${BUILD_NUMBER}
-                            
                         """
                     }
                 }
             }
         }
 
-        stage('k8s deploy') {
+        stage('K8s Deploy') {
             steps {
                 script {
-                    // Deploy to EKS using the image with the current build number
+                    // Update Kubernetes deployment to use the new image tagged with BUILD_NUMBER
                     sh """
-                        kubectl set image deployment/tomcat-deployment \
-                        tomcat=${DOCKER_HUB_USER}/${IMAGE_NAME}:${BUILD_NUMBER} --record
-                        kubectl rollout status deployment/tomcat-deployment
+                        kubectl set image deployment/${K8S_DEPLOYMENT} \
+                        ${K8S_CONTAINER}=${DOCKER_HUB_USER}/${IMAGE_NAME}:${BUILD_NUMBER} \
+                        --namespace=${K8S_NAMESPACE} --record
+                        
+                        kubectl rollout status deployment/${K8S_DEPLOYMENT} \
+                        --namespace=${K8S_NAMESPACE}
                     """
                 }
             }
         }
 
-    }   // stages closed
-}   // pipeline closed
+    } // stages closed
+} // pipeline closed
