@@ -18,7 +18,7 @@ spec:
   spec: 
     containers:
     - name: mavenwebappcontainer
-      image: shriramk02/maven-web-app:v3
+      image: shriramk02/maven-web-app:BUILD_NUMBER
       imagePullPolicy: Always
       ports:
       - containerPort: 8080
